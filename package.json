@@ -1,0 +1,31 @@
+{
+  "name": "accessibility-webpack-plugin",
+  "version": "0.1.0",
+  "description": "Webpack plugin that reports accessibility issues for React applications",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evcohen/accessibility-webpack-plugin.git"
+  },
+  "keywords": [
+    "webpack",
+    "plugin",
+    "accessibility",
+    "a11y",
+    "react",
+    "javascript"
+  ],
+  "author": "Ethan Cohen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/evcohen/accessibility-webpack-plugin/issues"
+  },
+  "homepage": "https://github.com/evcohen/accessibility-webpack-plugin#readme",
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "tmp": "^0.0.31"
+  }
+}
