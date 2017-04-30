@@ -17,23 +17,22 @@ WebpackAccessibilityPlugin.prototype.apply = (compiler) => {
       // Start with application specific modules
       chunk.modules
         .filter(module => module.resource && module.resource.indexOf('node_modules') === -1 && module.resource.match(/\.(js|jsx)$/))
-        .map(module => module._source._value)
+        .map(module => module._source._value) // eslint-disable-line no-underscore-dangle
         .filter(isReactComponent)
         .forEach((source) => {
           // Write to temporary file
-          tmp.file({ postfix: '.js', dir: './tmp' }, (tmpErr, path, fd, cleanupCallback) => {
+          tmp.file({ postfix: '.js', dir: `${__dirname}/tmp` }, (tmpErr, path, fd, cleanupCallback) => {
             if (tmpErr) throw tmpErr;
-            const self = this;
 
             fs.writeFile(path, source, (err) => {
               if (err) throw err;
 
-              const component = require(path).default;
-              const element = self.createElement(component);
-              const markup = self.renderMarkup(element);
+              const component = require(path).default; // eslint-disable-line
+              const element = this.createElement(component);
+              const markup = this.renderMarkup(element);
 
               // Run a11y report on markup!
-              console.log(markup);
+              console.log(markup); // eslint-disable-line
 
               cleanupCallback();
             });
