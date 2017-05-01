@@ -1,13 +1,12 @@
 /* eslint-disable no-underscore-dangle */
 require('babel-polyfill');
-const tmp = require('tmp');
-const fs = require('fs');
+const writeModule = require('./util/tmpFile');
 const chalk = require('chalk');
 // const rimraf = require('rimraf');
 
 const TMP_DIR = `${__dirname}/tmp`;
-const FILE_MOCK_DEPENDENCY_PATH = `${__dirname}/fileMock`;
-const STYLE_MOCK_DEPENDENCY_PATH = `${__dirname}/styleMock`;
+const FILE_MOCK_DEPENDENCY_PATH = `${__dirname}/mocks/fileMock`;
+const STYLE_MOCK_DEPENDENCY_PATH = `${__dirname}/mocks/styleMock`;
 const JS_FILE_REGEX = /\.(js|jsx)$/;
 const FILE_MOCK_REGEX = /\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$/;
 const STYLE_MOCK_REGEX = /\.(css|less|sass)$/;
@@ -17,36 +16,13 @@ const isReactComponent = source => source.indexOf('(_react.Component)') > -1;
 const isExternalDependency = module =>
   module && module.resource && module.resource.indexOf('node_modules') > -1;
 
-const getSourceCode = module => module._source._value;
-
-const writeModule = source =>
-  new Promise((resolve, reject) => {
-    tmp.file({ postfix: '.js', dir: TMP_DIR }, (tmpErr, path, fd, cleanupCallback) => {
-      if (tmpErr) {
-        cleanupCallback();
-        reject(tmpErr);
-      }
-
-      fs.writeFile(path, source, (err) => {
-        if (err) {
-          cleanupCallback();
-          reject(err);
-        }
-
-        try {
-          resolve(path);
-        } catch (e) {
-          throw e;
-          // Just skip file if it fails.
-        }
-      });
-    });
-  });
+const getSourceCode = module => module._source && module._source._value;
 
 const handleDependencies = async (module) => {
   try {
     const { dependencies: moduleDependencies = [] } = module;
 
+    // Gather internal dependencies.
     const dependencies = moduleDependencies
       .map(dependency => dependency.module)
       .filter(dependency => isExternalDependency(dependency) === false);
@@ -55,8 +31,10 @@ const handleDependencies = async (module) => {
       return module;
     }
 
+    // Return module with modified source code that changes requires to point
+    // to tmp files with compiled dependencies.
     return await dependencies.reduce(async (modifiedModule = {}, dependency) => {
-      // Recurse through all dependencies if it is a JS file.
+      // Recurse through all dependencies.
       await handleDependencies(dependency);
 
       const pathToReplaceInSource = dependency.rawRequest;
@@ -75,11 +53,11 @@ const handleDependencies = async (module) => {
         };
       }
 
-      const newSourcePath = await writeModule(getSourceCode(dependency));
+      const newDependencyPath = await writeModule(TMP_DIR, getSourceCode(dependency));
       return {
         ...module,
-        modifiedSource: source.replace(pathToReplaceInSource, newSourcePath),
-        dependencyPaths: dependencyPaths.concat([newSourcePath]),
+        modifiedSource: source.replace(pathToReplaceInSource, newDependencyPath),
+        dependencyPaths: dependencyPaths.concat([newDependencyPath]),
       };
     }, module);
   } catch (e) {
@@ -91,6 +69,7 @@ class AccessibilityWebpackPlugin {
   constructor(options) {
     this.createElement = options.createElement;
     this.renderMarkup = options.renderMarkup;
+    this.componentLibrary = options.componentLibrary;
   }
 
   apply(compiler) {
@@ -106,14 +85,16 @@ class AccessibilityWebpackPlugin {
               const { modifiedSource } = await handleDependencies(module);
               const source = modifiedSource || getSourceCode(module);
 
-              writeModule(source)
+              writeModule(TMP_DIR, source)
                 .then((path) => {
+                  // Inject component library (React, preact, etc)
+                  // require(this.componentLibrary); // eslint-disable-line
                   const component = require(path).default; // eslint-disable-line
                   const element = this.createElement(component);
                   const markup = this.renderMarkup(element);
 
                   // Run a11y report on markup!
-                  console.log(chalk.green(`<${component.name}>: `), markup, '\n'); // eslint-disable-line
+                  console.log(chalk.green(`<${component.name}>: `), markup, '\n');
 
                   // Clean up tmp files.
                   // TODO: create glob from list of paths to make this one rimraf call.
@@ -124,6 +105,7 @@ class AccessibilityWebpackPlugin {
                   throw e;
                 });
             } catch (e) {
+              console.log({ e });
               throw e;
             }
           });
