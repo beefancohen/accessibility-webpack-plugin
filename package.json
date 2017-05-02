@@ -4,12 +4,13 @@
   "description": "Webpack plugin that reports accessibility issues for React applications",
   "main": "lib/index.js",
   "scripts": {
-    "test": "jest --coverage",
-    "build": "babel src --out-dir lib --copy-files --source-maps inline",
     "build:watch": "npm run build -- --watch",
-    "lint": "eslint index.js src __tests__",
+    "build": "babel src --out-dir lib --copy-files --source-maps inline",
+    "clean": "rimraf src/tmp/*.js && rimraf lib",
     "lint:fix": "npm run lint -- --fix",
-    "clean": "rimraf tmp/*.js && rimraf lib"
+    "lint": "eslint index.js src __tests__",
+    "prepublish": "npm run clean && npm run build",
+    "test": "jest --coverage"
   },
   "repository": {
     "type": "git",
