@@ -5,7 +5,7 @@
   "main": "dist/cjs.js",
   "scripts": {
     "build:watch": "yarn run build -- --watch",
-    "build": "cross-env NODE_ENV=production babel src -d dist --ignore 'src/**/*.test.js'",
+    "build": "cross-env NODE_ENV=production babel src -d dist --ignore 'src/**/*.test.js' --copy-files",
     "clean": "del-cli dist src/tmp/*.js",
     "lint:fix": "npm run lint -- --fix",
     "lint": "eslint --cache src __tests__",
