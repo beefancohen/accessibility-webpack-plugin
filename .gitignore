@@ -3,7 +3,7 @@ logs
 *.log
 npm-debug.log*
 .DS_Store
-tmp/*.js
+src/tmp/*.js
 
 # Compiled assets
 lib

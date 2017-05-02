@@ -2,7 +2,7 @@
 require('babel-polyfill');
 const writeModule = require('./util/tmpFile');
 const chalk = require('chalk');
-// const rimraf = require('rimraf');
+const rimraf = require('rimraf');
 
 const TMP_DIR = `${__dirname}/tmp`;
 const FILE_MOCK_DEPENDENCY_PATH = `${__dirname}/mocks/fileMock`;
@@ -18,48 +18,56 @@ const isExternalDependency = module =>
 
 const getSourceCode = module => module._source && module._source._value;
 
-const handleDependencies = async (module) => {
+const handleDependencies = (module) => {
+  const { dependencies: moduleDependencies = [] } = module;
+
+  // Gather internal dependencies.
+  const dependencies = moduleDependencies
+    .map(dependency => dependency.module)
+    .filter(
+      dependency =>
+        isExternalDependency(dependency) === false && dependency.resource !== module.resource,
+    );
+
+  if (dependencies.length === 0) {
+    return module;
+  }
+
+  // Return module with modified source code that changes requires to point
+  // to tmp files with compiled dependencies.
   try {
-    const { dependencies: moduleDependencies = [] } = module;
-
-    // Gather internal dependencies.
-    const dependencies = moduleDependencies
-      .map(dependency => dependency.module)
-      .filter(dependency => isExternalDependency(dependency) === false);
-
-    if (dependencies.length === 0) {
-      return module;
-    }
-
-    // Return module with modified source code that changes requires to point
-    // to tmp files with compiled dependencies.
-    return await dependencies.reduce(async (modifiedModule = {}, dependency) => {
+    const revisedModule = dependencies.reduce(async (m = {}, dependency) => {
       // Recurse through all dependencies.
-      await handleDependencies(dependency);
+      handleDependencies(dependency);
 
+      // Async functions return a promise.
+      const modifiedModule = await m;
       const pathToReplaceInSource = dependency.rawRequest;
-      const source = modifiedModule.modifiedSource || getSourceCode(modifiedModule);
+      const source = modifiedModule.modifiedSource || getSourceCode(modifiedModule) || '';
       const dependencyPaths = modifiedModule.dependencyPaths || [];
 
       if (STYLE_MOCK_REGEX.test(dependency.userRequest)) {
         return {
-          ...module,
+          ...modifiedModule,
           modifiedSource: source.replace(pathToReplaceInSource, STYLE_MOCK_DEPENDENCY_PATH),
         };
       } else if (FILE_MOCK_REGEX.test(dependency.userRequest)) {
         return {
-          ...module,
+          ...modifiedModule,
           modifiedSource: source.replace(pathToReplaceInSource, FILE_MOCK_DEPENDENCY_PATH),
         };
       }
 
       const newDependencyPath = await writeModule(TMP_DIR, getSourceCode(dependency));
       return {
-        ...module,
+        ...modifiedModule,
         modifiedSource: source.replace(pathToReplaceInSource, newDependencyPath),
+        // Paths to clean up afterwards.
         dependencyPaths: dependencyPaths.concat([newDependencyPath]),
       };
     }, module);
+
+    return revisedModule;
   } catch (e) {
     throw e;
   }
@@ -69,7 +77,6 @@ class AccessibilityWebpackPlugin {
   constructor(options) {
     this.createElement = options.createElement;
     this.renderMarkup = options.renderMarkup;
-    this.componentLibrary = options.componentLibrary;
   }
 
   apply(compiler) {
@@ -82,31 +89,26 @@ class AccessibilityWebpackPlugin {
           .filter(module => isReactComponent(getSourceCode(module)))
           .forEach(async (module) => {
             try {
-              const { modifiedSource } = await handleDependencies(module);
-              const source = modifiedSource || getSourceCode(module);
+              const modifiedModule = await handleDependencies(module);
+              const source = modifiedModule.modifiedSource || getSourceCode(module) || '';
+              var dependencyPaths = modifiedModule.dependencyPaths || [];
 
-              writeModule(TMP_DIR, source)
-                .then((path) => {
-                  // Inject component library (React, preact, etc)
-                  // require(this.componentLibrary); // eslint-disable-line
-                  const component = require(path).default; // eslint-disable-line
-                  const element = this.createElement(component);
-                  const markup = this.renderMarkup(element);
+              var path = await writeModule(TMP_DIR, source);
 
-                  // Run a11y report on markup!
-                  console.log(chalk.green(`<${component.name}>: `), markup, '\n');
+              // Inject component library (React, preact, etc)
+              // require(this.componentLibrary); // eslint-disable-line
+              const component = require(path).default; // eslint-disable-line
+              const element = this.createElement(component);
+              const markup = this.renderMarkup(element);
 
-                  // Clean up tmp files.
-                  // TODO: create glob from list of paths to make this one rimraf call.
-                  // dependencyPaths.concat([path]).forEach(file => rimraf(file, () => {}));
-                })
-                .catch((e) => {
-                  console.log({ e });
-                  throw e;
-                });
+              // Run a11y report on markup!
+              console.log(chalk.green(`<${component.name}>: `), markup, '\n');
             } catch (e) {
-              console.log({ e });
               throw e;
+            } finally {
+              // Clean up tmp files.
+              // TODO: create glob from list of paths to make this one rimraf call.
+              dependencyPaths.concat([path]).forEach(file => rimraf(file, () => {}));
             }
           });
       });
