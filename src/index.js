@@ -1,8 +1,10 @@
 /* eslint-disable no-underscore-dangle */
 require('babel-polyfill');
-const chalk = require('chalk');
 const rimraf = require('rimraf');
 const writeModule = require('./util/tmpFile');
+const a11yRules = require('./a11y/rules');
+const executeRules = require('./a11y');
+const report = require('./a11y/reporter');
 
 const TMP_DIR = `${__dirname}/tmp`;
 const FILE_MOCK_DEPENDENCY_PATH = `${__dirname}/mocks/fileMock`;
@@ -73,6 +75,11 @@ class AccessibilityWebpackPlugin {
   constructor(options) {
     this.createElement = options.createElement;
     this.renderMarkup = options.renderMarkup;
+    const context = {
+      report,
+      ...options,
+    };
+    this.execute = executeRules.bind(this, a11yRules(context));
   }
 
   apply(compiler) {
@@ -95,10 +102,11 @@ class AccessibilityWebpackPlugin {
               // Inject component library (React, preact, etc)
               const component = require(path).default; // eslint-disable-line
               const element = this.createElement(component);
+              const componentType = element.type.name;
               const markup = this.renderMarkup(element);
 
               // Run a11y report on markup!
-              console.log(chalk.green(`<${component.name}>: `), markup, '\n'); // eslint-disable-line
+              this.execute(markup, componentType);
             } catch (e) {
               throw e;
             } finally {

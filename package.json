@@ -45,6 +45,7 @@
     "babel-polyfill": "^6.23.0",
     "chalk": "^1.1.3",
     "fs": "^0.0.1-security",
+    "htmlparser2": "^3.9.2",
     "rimraf": "^2.6.1",
     "tmp": "^0.0.31"
   },
