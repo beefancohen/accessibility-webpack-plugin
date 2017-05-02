@@ -21,7 +21,7 @@ const getSourceCode = module => module._source && module._source._value;
 const handleDependencies = (module) => {
   const { dependencies: moduleDependencies = [] } = module;
 
-  // Gather internal dependencies.
+  // Gather dependencies that have relative paths (in-app).
   const dependencies = moduleDependencies
     .map(dependency => dependency.module)
     .filter(
@@ -96,7 +96,6 @@ class AccessibilityWebpackPlugin {
               var path = await writeModule(TMP_DIR, source);
 
               // Inject component library (React, preact, etc)
-              // require(this.componentLibrary); // eslint-disable-line
               const component = require(path).default; // eslint-disable-line
               const element = this.createElement(component);
               const markup = this.renderMarkup(element);
@@ -108,6 +107,7 @@ class AccessibilityWebpackPlugin {
             } finally {
               // Clean up tmp files.
               // TODO: create glob from list of paths to make this one rimraf call.
+              // Not sure how safe this would be if the LCS is something outside the scope of the project.
               dependencyPaths.concat([path]).forEach(file => rimraf(file, () => {}));
             }
           });
