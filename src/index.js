@@ -1,8 +1,8 @@
 /* eslint-disable no-underscore-dangle */
 require('babel-polyfill');
-const writeModule = require('./util/tmpFile');
 const chalk = require('chalk');
 const rimraf = require('rimraf');
+const writeModule = require('./util/tmpFile');
 
 const TMP_DIR = `${__dirname}/tmp`;
 const FILE_MOCK_DEPENDENCY_PATH = `${__dirname}/mocks/fileMock`;
@@ -13,8 +13,7 @@ const STYLE_MOCK_REGEX = /\.(css|less|sass)$/;
 
 const isReactComponent = source => source.indexOf('(_react.Component)') > -1;
 
-const isExternalDependency = module =>
-  module && module.resource && module.resource.indexOf('node_modules') > -1;
+const isExternalDependency = module => module && module.resource && module.resource.indexOf('node_modules') > -1;
 
 const getSourceCode = module => module._source && module._source._value;
 
@@ -24,10 +23,7 @@ const handleDependencies = (module) => {
   // Gather dependencies that have relative paths (in-app).
   const dependencies = moduleDependencies
     .map(dependency => dependency.module)
-    .filter(
-      dependency =>
-        isExternalDependency(dependency) === false && dependency.resource !== module.resource,
-    );
+    .filter(dependency => isExternalDependency(dependency) === false && dependency.resource !== module.resource);
 
   if (dependencies.length === 0) {
     return module;
@@ -83,17 +79,18 @@ class AccessibilityWebpackPlugin {
     compiler.plugin('emit', (compilation, callback) => {
       compilation.chunks.forEach((chunk) => {
         chunk.modules
-          .filter(
-            module => isExternalDependency(module) === false && JS_FILE_REGEX.test(module.resource),
-          )
+          .filter(module => isExternalDependency(module) === false && JS_FILE_REGEX.test(module.resource))
           .filter(module => isReactComponent(getSourceCode(module)))
           .forEach(async (module) => {
+            let dependencyPaths = [];
+            let path;
+
             try {
               const modifiedModule = await handleDependencies(module);
               const source = modifiedModule.modifiedSource || getSourceCode(module) || '';
-              var dependencyPaths = modifiedModule.dependencyPaths || [];
+              dependencyPaths = dependencyPaths.concat(modifiedModule.dependencyPaths || []);
 
-              var path = await writeModule(TMP_DIR, source);
+              path = await writeModule(TMP_DIR, source);
 
               // Inject component library (React, preact, etc)
               const component = require(path).default; // eslint-disable-line
@@ -101,13 +98,14 @@ class AccessibilityWebpackPlugin {
               const markup = this.renderMarkup(element);
 
               // Run a11y report on markup!
-              console.log(chalk.green(`<${component.name}>: `), markup, '\n');
+              console.log(chalk.green(`<${component.name}>: `), markup, '\n'); // eslint-disable-line
             } catch (e) {
               throw e;
             } finally {
               // Clean up tmp files.
               // TODO: create glob from list of paths to make this one rimraf call.
-              // Not sure how safe this would be if the LCS is something outside the scope of the project.
+              // Not sure how safe this would be if the LCS is something outside
+              // the scope of the project.
               dependencyPaths.concat([path]).forEach(file => rimraf(file, () => {}));
             }
           });
@@ -118,5 +116,5 @@ class AccessibilityWebpackPlugin {
   }
 }
 
-module.exports = AccessibilityWebpackPlugin;
+export default AccessibilityWebpackPlugin;
 /* eslint-enable no-underscore-dangle */

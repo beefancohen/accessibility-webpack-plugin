@@ -1,5 +1,5 @@
-const tmp = require('tmp');
 const fs = require('fs');
+const tmp = require('tmp');
 
 module.exports = function writeModule(directory, contents = '') {
   return new Promise((resolve, reject) => {

@@ -5,17 +5,10 @@ npm-debug.log*
 .DS_Store
 src/tmp/*.js
 
-# Compiled assets
-lib
-
 # Runtime data
 pids
 *.pid
 *.seed
-
-# Coverage directory used by tools like istanbul
-coverage
-reports
 
 # nyc test coverage
 .nyc_output
@@ -26,11 +19,21 @@ reports
 # Compiled binary addons (http://nodejs.org/api/addons.html)
 build/Release
 
-# Dependency directories
-node_modules
-
 # Optional npm cache directory
 .npm
 
 # Optional REPL history
 .node_repl_history
+
+yarn-debug.log*
+.eslintcache
+/coverage
+/dist
+/local
+/reports
+/node_modules
+Thumbs.db
+.idea
+.vscode
+*.sublime-project
+*.sublime-workspace

@@ -2,15 +2,26 @@
   "name": "accessibility-webpack-plugin",
   "version": "0.2.2",
   "description": "Webpack plugin that reports accessibility issues for React applications",
-  "main": "lib/index.js",
+  "main": "dist/cjs.js",
   "scripts": {
-    "build:watch": "npm run build -- --watch",
-    "build": "babel src --out-dir lib --copy-files --source-maps inline",
-    "clean": "rimraf src/tmp/*.js && rimraf lib",
+    "build:watch": "yarn run build -- --watch",
+    "build": "cross-env NODE_ENV=production babel src -d dist --ignore 'src/**/*.test.js'",
+    "clean": "del-cli dist src/tmp/*.js",
     "lint:fix": "npm run lint -- --fix",
-    "lint": "eslint index.js src __tests__",
-    "prepublish": "npm run clean && npm run build",
-    "test": "jest --coverage"
+    "lint": "eslint --cache src __tests__",
+    "prepublish": "yarn run build",
+    "test": "jest",
+    "webpack-defaults": "webpack-defaults",
+    "start": "yarn run build -- -w",
+    "prebuild": "yarn run clean",
+    "lint-staged": "lint-staged",
+    "release": "yarn run standard-version",
+    "security": "nsp check",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --collectCoverageFrom='src/**/*.js' --coverage",
+    "travis:lint": "yarn run lint && yarn run security",
+    "travis:test": "yarn run test",
+    "travis:coverage": "yarn run test:coverage"
   },
   "repository": {
     "type": "git",
@@ -44,12 +55,20 @@
     "babel-jest": "^19.0.0",
     "babel-plugin-transform-async-to-generator": "^6.24.1",
     "babel-plugin-transform-object-rest-spread": "^6.23.0",
+    "babel-preset-env": "^1.4.0",
     "babel-preset-es2015": "^6.24.1",
     "coveralls": "^2.13.1",
+    "cross-env": "^4.0.0",
+    "del-cli": "^0.2.1",
     "eslint": "^3.19.0",
-    "eslint-config-airbnb-base": "^11.1.3",
+    "eslint-config-webpack": "^1.2.2",
     "eslint-plugin-import": "^2.2.0",
-    "jest": "^19.0.2"
+    "jest": "^19.0.2",
+    "lint-staged": "^3.4.1",
+    "nsp": "^2.6.3",
+    "pre-commit": "^1.2.2",
+    "standard-version": "^4.0.0",
+    "webpack-defaults": "^0.4.6"
   },
   "jest": {
     "coverageReporters": [
@@ -58,6 +77,19 @@
     "coverageDirectory": "reports",
     "roots": [
       "<rootDir>/__tests__"
+    ]
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">= 4.3 < 5.0.0 || >= 5.10"
+  },
+  "pre-commit": "lint-staged",
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "git add"
     ]
   }
 }
