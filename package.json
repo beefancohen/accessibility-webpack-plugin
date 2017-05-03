@@ -47,6 +47,7 @@
     "fs": "^0.0.1-security",
     "htmlparser2": "^3.9.2",
     "rimraf": "^2.6.1",
+    "shhh": "^1.0.3",
     "tmp": "^0.0.31"
   },
   "devDependencies": {

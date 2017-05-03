@@ -1,6 +1,7 @@
 /* eslint-disable no-underscore-dangle */
 require('babel-polyfill');
 const rimraf = require('rimraf');
+const shhh = require('shhh');
 const writeModule = require('./util/tmpFile');
 const rules = require('./a11y/rules');
 const Parser = require('./a11y/Parser');
@@ -80,13 +81,15 @@ class AccessibilityWebpackPlugin {
             path = await writeModule(TMP_DIR, modifiedModule.source);
             dependencyPaths = dependencyPaths.concat(modifiedModule.dependencyPaths || []).concat([path]);
 
-            // Inject component library (React, preact, etc)
+            // Quiet the console since React can be noisy in DEV mode.
+            shhh.enable();
             const component = require(path).default; // eslint-disable-line
             const element = this.createElement(component);
-            const componentType = element.type.name;
             const markup = this.renderMarkup(element);
+            shhh.disable();
 
             // Run a11y report on markup!
+            const componentType = element.type.name;
             const parser = new Parser(componentType, this.reporter);
             parser.execute(rules, markup);
           } catch (e) {
