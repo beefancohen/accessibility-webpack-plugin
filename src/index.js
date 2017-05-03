@@ -11,7 +11,7 @@ const TMP_DIR = `${__dirname}/tmp`;
 const FILE_MOCK_DEPENDENCY_PATH = `${__dirname}/mocks/fileMock`;
 const STYLE_MOCK_DEPENDENCY_PATH = `${__dirname}/mocks/styleMock`;
 const FILE_MOCK_REGEX = /\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$/;
-const STYLE_MOCK_REGEX = /\.(css|less|sass)$/;
+const STYLE_MOCK_REGEX = /\.(css|less|sass|scss)$/;
 
 const handleDependencies = (module) => {
   // Gather dependencies that have relative paths (in-app).
