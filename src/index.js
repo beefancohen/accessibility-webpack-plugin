@@ -2,18 +2,26 @@
 require('babel-polyfill');
 const rimraf = require('rimraf');
 const shhh = require('shhh');
-const writeModule = require('./util/tmpFile');
+const writeModule = require('./util/tmp-file');
 const rules = require('./a11y/rules');
 const Parser = require('./a11y/Parser');
 const Reporter = require('./a11y/Reporter');
-const ModuleFactory = require('./factories/moduleFactory');
+const TestRunner = require('./a11y/Runner');
+const ModuleFactory = require('./factories/module-factory');
 
 const TMP_DIR = `${__dirname}/tmp`;
-const FILE_MOCK_DEPENDENCY_PATH = `${__dirname}/mocks/fileMock`;
-const STYLE_MOCK_DEPENDENCY_PATH = `${__dirname}/mocks/styleMock`;
+const FILE_MOCK_DEPENDENCY_PATH = `${__dirname}/mocks/file-mock`;
+const STYLE_MOCK_DEPENDENCY_PATH = `${__dirname}/mocks/style-mock`;
 const FILE_MOCK_REGEX = /\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$/;
 const STYLE_MOCK_REGEX = /\.(css|less|sass|scss)$/;
 
+/**
+ * For each module we are examining, we will need to handle its dependencies accordingly.
+ * Since the module's source code may require a file with a relative path, we need to
+ * create a temporary file with the dependency's source code and replace the module's
+ * source to point to that new temporary file. This will recurse through all dependencies
+ * that aren't in node_modules, since we can access node_modules with normal dependency resolution.
+ */
 const handleDependencies = (module) => {
   // Gather dependencies that have relative paths (in-app).
   const dependencies = module.dependencies
@@ -67,6 +75,21 @@ class AccessibilityWebpackPlugin {
     this.createElement = options.createElement;
     this.renderMarkup = options.renderMarkup;
     this.reporter = new Reporter(this.options);
+    this.parser = Parser;
+  }
+
+  render(path) {
+    // Quiet the console since React can be noisy in DEV mode.
+    shhh.enable();
+    const component = require(path).default; // eslint-disable-line
+    const element = this.createElement(component);
+    const markup = this.renderMarkup(element);
+    shhh.disable();
+
+    const componentName = element.type.name;
+    return {
+      [componentName]: markup,
+    };
   }
 
   apply(compiler) {
@@ -81,17 +104,14 @@ class AccessibilityWebpackPlugin {
             path = await writeModule(TMP_DIR, modifiedModule.source);
             dependencyPaths = dependencyPaths.concat(modifiedModule.dependencyPaths || []).concat([path]);
 
-            // Quiet the console since React can be noisy in DEV mode.
-            shhh.enable();
-            const component = require(path).default; // eslint-disable-line
-            const element = this.createElement(component);
-            const markup = this.renderMarkup(element);
-            shhh.disable();
+            const components = this.render(path);
 
             // Run a11y report on markup!
-            const componentType = element.type.name;
-            const parser = new Parser(componentType, this.reporter);
-            parser.execute(rules, markup);
+            Object.keys(components).forEach((component) => {
+              const markup = components[component];
+              const runner = new TestRunner({ component, reporter: this.reporter, parser: this.parser, rules });
+              runner.run(markup);
+            });
           } catch (e) {
             throw e;
           } finally {

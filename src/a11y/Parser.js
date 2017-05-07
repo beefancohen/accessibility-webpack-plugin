@@ -1,17 +1,11 @@
-const htmlParser = require('htmlparser2');
+const htmlParser = require('html-parse-stringify');
 
 class Parser {
-  constructor(component, reporter) {
-    this.component = component;
-    this.reporter = reporter;
-  }
+  static parse(html = '') {
+    const ast = htmlParser.parse(html);
+    const node = ast[0] || {};
 
-  execute(rules, htmlString = '') {
-    rules.forEach((rule) => {
-      const parser = new htmlParser.Parser(rule(this.component, this.reporter), { decodeEntities: true });
-      parser.write(htmlString);
-      parser.end();
-    });
+    return node;
   }
 }
 
